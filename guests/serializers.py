@@ -20,6 +20,8 @@ class PhoneSerializer(serializers.Serializer):
 class GuestRegisterSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20, validators=[validate_phone], required=False)
     name = serializers.CharField(max_length=150)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    tg = serializers.CharField(max_length=64, required=False, allow_blank=True)
 
 
 class GuestAuthSerializer(serializers.Serializer):
@@ -36,16 +38,20 @@ class GuestAuthResponseSerializer(serializers.Serializer):
 class GuestProfileUpdateSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20, validators=[validate_phone], required=False)
     name = serializers.CharField(max_length=150, required=False)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    tg = serializers.CharField(max_length=64, required=False, allow_blank=True)
 
     def validate(self, attrs):
         if not attrs:
-            raise serializers.ValidationError("At least one of 'phone' or 'name' must be provided.")
+            raise serializers.ValidationError("At least one of 'phone', 'name', 'email' or 'tg' must be provided.")
         return attrs
 
 
 class GuestProfileSerializer(serializers.Serializer):
     phone = serializers.CharField(allow_null=True)
     name = serializers.CharField(source="first_name", allow_blank=True)
+    email = serializers.CharField(allow_blank=True)
+    tg = serializers.CharField(allow_null=True, allow_blank=True)
 
 
 class TokenPairSerializer(serializers.Serializer):

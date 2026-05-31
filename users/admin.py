@@ -62,11 +62,11 @@ class UserProductTastingMarkInline(admin.TabularInline):
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    fieldsets = BaseUserAdmin.fieldsets + (("Loyalty", {"fields": ("phone", "has_loyalty")}),)
-    add_fieldsets = BaseUserAdmin.add_fieldsets + (("Loyalty", {"fields": ("phone", "has_loyalty")}),)
-    list_display = BaseUserAdmin.list_display + ("phone", "has_loyalty")
+    fieldsets = BaseUserAdmin.fieldsets + (("Loyalty", {"fields": ("phone", "tg", "has_loyalty")}),)
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (("Loyalty", {"fields": ("phone", "tg", "has_loyalty")}),)
+    list_display = BaseUserAdmin.list_display + ("phone", "tg", "has_loyalty")
     list_filter = BaseUserAdmin.list_filter + ("has_loyalty",)
-    search_fields = BaseUserAdmin.search_fields + ("phone", "id")
+    search_fields = BaseUserAdmin.search_fields + ("phone", "tg", "id")
     inlines = [
         UserTastingParticipationInline,
         UserProductReviewInline,

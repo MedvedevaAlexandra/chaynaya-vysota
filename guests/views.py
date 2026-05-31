@@ -50,6 +50,8 @@ class GuestRegisterView(APIView):
             username=_generate_username(),
             phone=phone,
             first_name=name,
+            email=serializer.validated_data.get("email", ""),
+            tg=serializer.validated_data.get("tg", ""),
         )
         return Response(_issue_tokens(user), status=status.HTTP_201_CREATED)
 
@@ -125,6 +127,14 @@ class GuestMeView(APIView):
         if "name" in data:
             user.first_name = data["name"]
             update_fields.append("first_name")
+
+        if "email" in data:
+            user.email = data["email"]
+            update_fields.append("email")
+
+        if "tg" in data:
+            user.tg = data["tg"]
+            update_fields.append("tg")
 
         user.save(update_fields=update_fields)
         return Response(GuestProfileSerializer(user).data, status=status.HTTP_200_OK)
