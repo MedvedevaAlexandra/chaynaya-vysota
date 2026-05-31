@@ -762,25 +762,9 @@ def _build_tasting_result(participation: TastingParticipation, request) -> dict:
         reviews__user=user,
         reviews__product_tasting__tasting=tasting,
     ).annotate(count=Count("reviews", distinct=True))
+    # Только выбранные TasteTags. Поле `source` оставляем в схеме для обратной совместимости
+    # (заполнения фраз-шаблонов в облако больше не попадают).
     tags_cloud = [{"id": t.id, "name": t.name, "weight": t.count, "source": "tag"} for t in tag_rows]
-
-    # Пропуски фраз-шаблонов: каждое непустое заполнение нормализуем (trim + lowercase) и считаем.
-    phrase_answer_counts: dict[str, int] = defaultdict(int)
-    phrase_answer_rows = PhraseTemplateReview.objects.filter(
-        product_review__user=user,
-        product_review__product_tasting__tasting=tasting,
-    ).values_list("answers", flat=True)
-    for answers in phrase_answer_rows:
-        for ans in answers or []:
-            if not isinstance(ans, str):
-                continue
-            norm = ans.strip().lower()
-            if norm:
-                phrase_answer_counts[norm] += 1
-    tags_cloud += [
-        {"id": None, "name": name, "weight": count, "source": "phrase"}
-        for name, count in phrase_answer_counts.items()
-    ]
     tags_cloud.sort(key=lambda x: (-x["weight"], x["name"]))
 
     pt_with_combos = (

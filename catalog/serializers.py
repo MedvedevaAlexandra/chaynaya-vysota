@@ -244,6 +244,10 @@ PHRASES_SCHEMA = {
                 "description": "Статические куски текста вокруг пропусков (на 1 больше, чем пропусков).",
             },
             "blanks_count": {"type": "integer", "description": "Сколько пропусков нужно заполнить."},
+            "show_toggle_list": {
+                "type": "boolean",
+                "description": "Подсказка фронту: показывать ли список-переключатель для заполнения пропусков.",
+            },
             "taste_block": _TASTE_BLOCK_PROP,
             "order": _ORDER_PROP,
             "user_answers": {
@@ -252,7 +256,17 @@ PHRASES_SCHEMA = {
                 "description": "Ответы текущего пользователя по пропускам (по порядку). Пустой список, если не заполнял.",
             },
         },
-        "required": ["id", "name", "template", "segments", "blanks_count", "taste_block", "order", "user_answers"],
+        "required": [
+            "id",
+            "name",
+            "template",
+            "segments",
+            "blanks_count",
+            "show_toggle_list",
+            "taste_block",
+            "order",
+            "user_answers",
+        ],
     },
 }
 
@@ -774,6 +788,7 @@ class ProductInTastingSerializer(ProductSerializer):
                     "template": tpl.template,
                     "segments": tpl.segments,
                     "blanks_count": tpl.blanks_count,
+                    "show_toggle_list": tpl.show_toggle_list,
                     "taste_block": tpl.taste_block_id,
                     "order": row.order,
                     "user_answers": answers_by_phrase.get(tpl.id, []),

@@ -70,8 +70,8 @@ class TasteBlockAdmin(admin.ModelAdmin):
 
 @admin.register(PhraseTemplate)
 class PhraseTemplateAdmin(admin.ModelAdmin):
-    list_display = ("id", "order", "name", "blanks_count", "taste_block")
-    list_editable = ("order", "taste_block")
+    list_display = ("id", "order", "name", "blanks_count", "show_toggle_list", "taste_block")
+    list_editable = ("order", "show_toggle_list", "taste_block")
     list_filter = ("taste_block",)
     search_fields = ("name", "template", "id")
     autocomplete_fields = ("taste_block",)

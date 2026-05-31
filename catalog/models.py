@@ -143,6 +143,7 @@ class PhraseTemplate(models.Model):
         "«Этот чай напомнил мне {blank}, а также {blank}.»"
     )
     order = models.PositiveIntegerField(default=0)
+    show_toggle_list = models.BooleanField(default=True)
     taste_block = models.ForeignKey(
         TasteBlock, on_delete=models.SET_NULL, null=True, blank=True, default=None, related_name="phrase_templates"
     )
