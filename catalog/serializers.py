@@ -395,8 +395,6 @@ class ProductSerializer(serializers.ModelSerializer):
             "tea_cultivar",
             "tea_altitude",
             "tea_color_type_name",
-            "tea_latitude",
-            "tea_longitude",
         ]
 
     def get_line(self, obj: Product) -> str | None:
