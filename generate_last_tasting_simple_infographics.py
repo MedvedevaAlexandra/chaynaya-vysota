@@ -428,19 +428,39 @@ def draw_selected_and_freeform_tags(tags, free_texts, phrase_answers):
     for tag_name, tea_order, count in tags:
         counts[f"тэг: {tag_name}"][tea_order] += count
 
+    controlled_values = {
+        "не обнаружены",
+        "слабо выражены",
+        "хорошо заметны",
+        "ярко выражены",
+        "доминируют",
+    }
+
     for tea_order, template, answers in phrase_answers:
         values = answers if isinstance(answers, list) else []
-        values = [str(value).strip() for value in values if str(value).strip()]
-        values = [value for value in values if "не обнаруж" not in value.lower()]
-        for value in values:
-            lower = value.lower()
-            if lower in {"слабо выражены", "хорошо заметны", "ярко выражены", "доминируют"}:
-                category = template.split(" {blank}")[0].strip().split(",")[0]
-                label = f"своб.: {category} — {lower}"
-            else:
-                label = f"своб.: {value}"
-            counts[label][tea_order] += 1
+        typed_values = []
 
+        # In these phrase templates the first blank is a controlled intensity choice.
+        # It is not a keyboard-entered tag, so skip it. Keep only the following
+        # descriptor blanks unless they are controlled values too.
+        for value in values[1:]:
+            value = str(value).strip()
+            if value and value.lower() not in controlled_values:
+                typed_values.append(value)
+
+        # A few legacy answers can place a user-entered word in the first blank
+        # for short templates. Include it only when it is not one of the controlled
+        # intensity choices.
+        if values:
+            first = str(values[0]).strip()
+            if first and first.lower() not in controlled_values and len(values) <= 3:
+                typed_values.insert(0, first)
+
+        for value in typed_values:
+            counts[f"своб. тэг: {value}"][tea_order] += 1
+
+    # Free text fields are manual keyboard input. Keep them separate from tags,
+    # with short readable summaries.
     free_text_patterns = [
         ("печенье / ваниль", ["печень", "ванил"]),
         ("пыльные / сахарные ноты", ["пыль", "сахар"]),
@@ -453,34 +473,36 @@ def draw_selected_and_freeform_tags(tags, free_texts, phrase_answers):
         matched = False
         for label_text, needles in free_text_patterns:
             if any(needle in lower for needle in needles):
-                counts[f"своб.: {label_text}"][tea_order] += 1
+                counts[f"текст: {label_text}"][tea_order] += 1
                 matched = True
         if not matched:
             short = text.replace("\n", " ")
             if len(short) > 34:
                 short = short[:31] + "..."
-            counts[f"своб.: {short}"][tea_order] += 1
+            counts[f"текст: {short}"][tea_order] += 1
 
     selected_rows = [row for row in counts if row.startswith("тэг: ")]
-    free_rows = [row for row in counts if row.startswith("своб.: ")]
+    typed_tag_rows = [row for row in counts if row.startswith("своб. тэг: ")]
+    text_rows = [row for row in counts if row.startswith("текст: ")]
     selected_rows.sort(key=lambda row: (-sum(counts[row].values()), row))
-    free_rows.sort(key=lambda row: (-sum(counts[row].values()), row))
-    rows = selected_rows + free_rows
+    typed_tag_rows.sort(key=lambda row: (-sum(counts[row].values()), row))
+    text_rows.sort(key=lambda row: (-sum(counts[row].values()), row))
+    rows = selected_rows + typed_tag_rows + text_rows
 
     matrix = np.zeros((len(rows), 5), dtype=int)
     for i, row in enumerate(rows):
         for tea in range(5):
             matrix[i, tea] = counts[row][tea]
 
-    fig, ax = plt.subplots(figsize=(10.5, max(7, len(rows) * 0.32)), facecolor="white")
+    fig, ax = plt.subplots(figsize=(10.5, max(7, len(rows) * 0.34)), facecolor="white")
     im = ax.imshow(matrix, cmap="Blues", aspect="auto", vmin=0)
-    ax.set_title("Отмеченные тэги и свободные формулировки по каждому чаю", fontsize=15, fontweight="bold")
+    ax.set_title("Отмеченные тэги и ручной ввод по каждому чаю", fontsize=15, fontweight="bold")
     ax.set_xticks(range(5))
     ax.set_xticklabels([f"Чай {i + 1}\n{TEA_NAMES[i]}" for i in range(5)], fontsize=9)
     ax.set_yticks(range(len(rows)))
     ax.set_yticklabels(rows, fontsize=8)
     ax.set_xlabel("Чай")
-    ax.set_ylabel("Тэг / свободная формулировка")
+    ax.set_ylabel("Стандартный тэг / ручной ввод")
 
     vmax = max(1, int(matrix.max()) if matrix.size else 1)
     for i in range(matrix.shape[0]):
