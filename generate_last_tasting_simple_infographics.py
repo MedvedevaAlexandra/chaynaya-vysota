@@ -26,6 +26,15 @@ TEA_NAMES = {
 
 TEA_NAMES_ONE_LINE = {key: value.replace("\n", " ") for key, value in TEA_NAMES.items()}
 
+BREWING_CRITERIA_IDS = {57, 58, 59, 62}
+BREWING_CRITERIA_COLORS = {
+    57: "#4E79A7",
+    58: "#F28E2B",
+    59: "#59A14F",
+    62: "#B07AA1",
+}
+
+
 
 def slugify(text: str) -> str:
     repl = {
@@ -106,7 +115,8 @@ def select_data():
                COALESCE(tb.name, 'РАЗДЕЛ ОЦЕНКИ: органолептика заваренного чая') AS block_name,
                pt."order" AS tea_order,
                pcr.mark,
-               pr.user_id
+               pr.user_id,
+               pcr.x
         FROM catalog_productcriteriareview pcr
         JOIN catalog_productreview pr ON pr.id = pcr.product_review_id
         JOIN catalog_producttasting pt ON pt.id = pr.product_tasting_id
@@ -226,10 +236,22 @@ def select_data():
 def build_marks(marks):
     criteria = {}
     per_criterion = defaultdict(lambda: defaultdict(list))
-    for cid, name, grade, block, tea_order, mark, user_id in marks:
+    for cid, name, grade, block, tea_order, mark, user_id, x_value in marks:
         criteria[cid] = {"id": cid, "name": name, "grade": grade or [], "block": block}
         per_criterion[cid][tea_order].append(mark)
     return criteria, per_criterion
+
+
+def build_non_brewing_criteria(criteria):
+    return {cid: data for cid, data in criteria.items() if cid not in BREWING_CRITERIA_IDS}
+
+
+def build_brewing_points(marks):
+    points = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    for cid, name, grade, block, tea_order, mark, user_id, x_value in marks:
+        if cid in BREWING_CRITERIA_IDS and x_value is not None:
+            points[tea_order][cid][int(x_value)].append(mark)
+    return points
 
 
 def save_fig(fig, filename):
@@ -568,6 +590,69 @@ def draw_per_tea_criteria_heatmaps(criteria, per_criterion):
         save_fig(fig, filename)
 
 
+
+def draw_brewing_curves_by_tea(criteria, brewing_points):
+    for tea_order in range(5):
+        fig, ax = plt.subplots(figsize=(9.5, 5.8), facecolor="white")
+        has_data = False
+
+        for cid in sorted(BREWING_CRITERIA_IDS):
+            criterion_points = brewing_points.get(tea_order, {}).get(cid, {})
+            if not criterion_points:
+                continue
+            has_data = True
+            xs = sorted(criterion_points)
+            ys = [float(np.mean(criterion_points[x])) for x in xs]
+            counts = [len(criterion_points[x]) for x in xs]
+            color = BREWING_CRITERIA_COLORS[cid]
+            ax.plot(xs, ys, marker="o", linewidth=2.6, markersize=7, color=color, label=criteria[cid]["name"])
+            # Tiny count labels only when multiple people contributed to a point.
+            for x, y, count in zip(xs, ys, counts):
+                if count > 1:
+                    ax.text(x, y + 0.25, str(count), ha="center", va="bottom", fontsize=8, color=color)
+
+        ax.set_title(f"Чай {tea_order + 1}: {TEA_NAMES_ONE_LINE[tea_order]} — графики по проливам", fontsize=15, fontweight="bold", pad=14)
+        ax.set_xlabel("Номер пролива", fontsize=11)
+        ax.set_ylabel("Оценка", fontsize=11)
+        ax.set_xticks(range(1, 7))
+        ax.set_xlim(0.7, 6.3)
+        ax.set_ylim(-0.2, 10.2)
+        ax.grid(True, color="#dddddd", linewidth=0.8)
+        ax.spines[["top", "right"]].set_visible(False)
+
+        if has_data:
+            ax.legend(loc="upper right", fontsize=9, frameon=False)
+        else:
+            ax.text(0.5, 0.5, "Нет данных по графикам проливов", ha="center", va="center", transform=ax.transAxes, fontsize=13, color="#777")
+
+        save_fig(fig, f"08_tea_{tea_order + 1}_brewing_curves.jpg")
+
+
+def draw_brewing_curves_by_metric(criteria, brewing_points):
+    for cid in sorted(BREWING_CRITERIA_IDS):
+        fig, ax = plt.subplots(figsize=(9.5, 5.8), facecolor="white")
+        has_data = False
+        for tea_order in range(5):
+            criterion_points = brewing_points.get(tea_order, {}).get(cid, {})
+            if not criterion_points:
+                continue
+            has_data = True
+            xs = sorted(criterion_points)
+            ys = [float(np.mean(criterion_points[x])) for x in xs]
+            ax.plot(xs, ys, marker="o", linewidth=2.3, markersize=6, label=f"Чай {tea_order + 1}: {TEA_NAMES_ONE_LINE[tea_order]}")
+
+        ax.set_title(f"{criteria[cid]['name']} — динамика по проливам", fontsize=15, fontweight="bold", pad=14)
+        ax.set_xlabel("Номер пролива", fontsize=11)
+        ax.set_ylabel("Средняя оценка", fontsize=11)
+        ax.set_xticks(range(1, 7))
+        ax.set_xlim(0.7, 6.3)
+        ax.set_ylim(-0.2, 10.2)
+        ax.grid(True, color="#dddddd", linewidth=0.8)
+        ax.spines[["top", "right"]].set_visible(False)
+        if has_data:
+            ax.legend(loc="upper right", fontsize=9, frameon=False)
+        save_fig(fig, f"09_metric_{cid}_{slugify(criteria[cid]['name'])}_brewing_curves.jpg")
+
 def write_readme(participants, teas, criteria, tags, free_texts):
     lines = [
         "# One-graph JPEG infographics for the May 31 tasting",
@@ -600,18 +685,22 @@ def main():
 
     participants, teas, marks, tags, activity, free_texts, phrase_answers = select_data()
     criteria, per_criterion = build_marks(marks)
+    non_brewing_criteria = build_non_brewing_criteria(criteria)
+    brewing_points = build_brewing_points(marks)
 
-    draw_average_heatmap(criteria, per_criterion)
+    draw_average_heatmap(non_brewing_criteria, per_criterion)
     draw_top_tags(tags)
     draw_tags_by_tea(tags)
     draw_activity(activity)
     draw_text_comments_count(free_texts)
     draw_selected_and_freeform_tags(tags, free_texts, phrase_answers)
 
-    draw_per_tea_criteria_heatmaps(criteria, per_criterion)
+    draw_per_tea_criteria_heatmaps(non_brewing_criteria, per_criterion)
+    draw_brewing_curves_by_tea(criteria, brewing_points)
+    draw_brewing_curves_by_metric(criteria, brewing_points)
 
-    for cid in sorted(criteria):
-        draw_criterion_distribution(criteria[cid], per_criterion[cid])
+    for cid in sorted(non_brewing_criteria):
+        draw_criterion_distribution(non_brewing_criteria[cid], per_criterion[cid])
 
     write_readme(participants, teas, criteria, tags, free_texts)
     print(f"participants={len(participants)} teas={len(teas)} criteria={len(criteria)}")
