@@ -197,9 +197,30 @@ def select_data():
     )
     free_texts = cur.fetchall()
 
+    cur.execute(
+        """
+        SELECT pt."order", phr.template, pthr.answers
+        FROM catalog_phrasetemplatereview pthr
+        JOIN catalog_productreview pr ON pr.id = pthr.product_review_id
+        JOIN catalog_producttasting pt ON pt.id = pr.product_tasting_id
+        JOIN catalog_phrasetemplate phr ON phr.id = pthr.phrase_template_id
+        WHERE pt.tasting_id = %s
+          AND pr.user_id IN (
+            SELECT tp.user_id
+            FROM catalog_tastingparticipation tp
+            WHERE tp.tasting_id = %s
+              AND tp.joined_at >= TIMESTAMPTZ %s
+              AND tp.joined_at <  TIMESTAMPTZ %s
+          )
+        ORDER BY pt."order", phr.id
+        """,
+        (TASTING_ID, TASTING_ID, START_UTC, END_UTC),
+    )
+    phrase_answers = cur.fetchall()
+
     cur.close()
     conn.close()
-    return participants, teas, marks, tags, activity, free_texts
+    return participants, teas, marks, tags, activity, free_texts, phrase_answers
 
 
 def build_marks(marks):
@@ -401,6 +422,78 @@ def draw_text_comments_count(free_texts):
     save_fig(fig, "05_free_text_comments_by_tea.jpg")
 
 
+def draw_selected_and_freeform_tags(tags, free_texts, phrase_answers):
+    counts = defaultdict(lambda: defaultdict(int))
+
+    for tag_name, tea_order, count in tags:
+        counts[f"тэг: {tag_name}"][tea_order] += count
+
+    for tea_order, template, answers in phrase_answers:
+        values = answers if isinstance(answers, list) else []
+        values = [str(value).strip() for value in values if str(value).strip()]
+        values = [value for value in values if "не обнаруж" not in value.lower()]
+        for value in values:
+            lower = value.lower()
+            if lower in {"слабо выражены", "хорошо заметны", "ярко выражены", "доминируют"}:
+                category = template.split(" {blank}")[0].strip().split(",")[0]
+                label = f"своб.: {category} — {lower}"
+            else:
+                label = f"своб.: {value}"
+            counts[label][tea_order] += 1
+
+    free_text_patterns = [
+        ("печенье / ваниль", ["печень", "ванил"]),
+        ("пыльные / сахарные ноты", ["пыль", "сахар"]),
+        ("Руби 18", ["руби 18"]),
+        ("пряный", ["пряный"]),
+        ("сингуц байча", ["сингуц"]),
+    ]
+    for tea_order, prompt_name, text in free_texts:
+        lower = text.lower()
+        matched = False
+        for label_text, needles in free_text_patterns:
+            if any(needle in lower for needle in needles):
+                counts[f"своб.: {label_text}"][tea_order] += 1
+                matched = True
+        if not matched:
+            short = text.replace("\n", " ")
+            if len(short) > 34:
+                short = short[:31] + "..."
+            counts[f"своб.: {short}"][tea_order] += 1
+
+    selected_rows = [row for row in counts if row.startswith("тэг: ")]
+    free_rows = [row for row in counts if row.startswith("своб.: ")]
+    selected_rows.sort(key=lambda row: (-sum(counts[row].values()), row))
+    free_rows.sort(key=lambda row: (-sum(counts[row].values()), row))
+    rows = selected_rows + free_rows
+
+    matrix = np.zeros((len(rows), 5), dtype=int)
+    for i, row in enumerate(rows):
+        for tea in range(5):
+            matrix[i, tea] = counts[row][tea]
+
+    fig, ax = plt.subplots(figsize=(10.5, max(7, len(rows) * 0.32)), facecolor="white")
+    im = ax.imshow(matrix, cmap="Blues", aspect="auto", vmin=0)
+    ax.set_title("Отмеченные тэги и свободные формулировки по каждому чаю", fontsize=15, fontweight="bold")
+    ax.set_xticks(range(5))
+    ax.set_xticklabels([f"Чай {i + 1}\n{TEA_NAMES[i]}" for i in range(5)], fontsize=9)
+    ax.set_yticks(range(len(rows)))
+    ax.set_yticklabels(rows, fontsize=8)
+    ax.set_xlabel("Чай")
+    ax.set_ylabel("Тэг / свободная формулировка")
+
+    vmax = max(1, int(matrix.max()) if matrix.size else 1)
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            value = int(matrix[i, j])
+            color = "white" if value > vmax / 2 else "#222"
+            ax.text(j, i, str(value) if value else "", ha="center", va="center", fontsize=9, color=color)
+
+    cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.03)
+    cbar.set_label("Количество отметок")
+    save_fig(fig, "06_tags_and_freeform_by_tea.jpg")
+
+
 def write_readme(participants, teas, criteria, tags, free_texts):
     lines = [
         "# One-graph JPEG infographics for the May 31 tasting",
@@ -431,7 +524,7 @@ def main():
     for path in OUT_DIR.glob("*.jpg"):
         path.unlink()
 
-    participants, teas, marks, tags, activity, free_texts = select_data()
+    participants, teas, marks, tags, activity, free_texts, phrase_answers = select_data()
     criteria, per_criterion = build_marks(marks)
 
     draw_average_heatmap(criteria, per_criterion)
@@ -439,6 +532,7 @@ def main():
     draw_tags_by_tea(tags)
     draw_activity(activity)
     draw_text_comments_count(free_texts)
+    draw_selected_and_freeform_tags(tags, free_texts, phrase_answers)
 
     for cid in sorted(criteria):
         draw_criterion_distribution(criteria[cid], per_criterion[cid])

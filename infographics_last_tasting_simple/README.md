@@ -13,6 +13,7 @@ Generated files:
 - `03_tags_by_tea_heatmap.jpg`
 - `04_activity_criteria_marks.jpg`
 - `05_free_text_comments_by_tea.jpg`
+- `06_tags_and_freeform_by_tea.jpg`
 - `57_vyrazitelnost_aromata_distribution.jpg`
 - `58_plotnost_vkusa_distribution.jpg`
 - `59_yarkost_poslevkusiya_distribution.jpg`
