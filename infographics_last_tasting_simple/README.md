@@ -1,26 +1,34 @@
-# Simple infographics for the May 31 tasting
+# One-graph JPEG infographics for the May 31 tasting
 
-Generated with `generate_last_tasting_simple_infographics.py`.
+Every JPEG contains exactly one graph.
+The generator uses SELECT-only database queries.
 
-Database access in the generator is SELECT-only. No INSERT/UPDATE/DELETE statements are used.
+Participants: 11
+Teas: 5
+Criteria with marks: 12
 
-Scope:
-- Tasting: `32d7f152-2880-4ed6-af9d-a52036b934fb`
-- Participants: users who joined the tasting from `2026-05-31 16:00:00+00` (19:00 Moscow) through `2026-06-01 12:00:00+00`
-- Result: 11 participants, 5 teas, 12 evaluated criteria
+Generated files:
+- `01_average_scores_heatmap.jpg`
+- `02_top_tags.jpg`
+- `03_tags_by_tea_heatmap.jpg`
+- `04_activity_criteria_marks.jpg`
+- `05_free_text_comments_by_tea.jpg`
+- `57_vyrazitelnost_aromata_distribution.jpg`
+- `58_plotnost_vkusa_distribution.jpg`
+- `59_yarkost_poslevkusiya_distribution.jpg`
+- `60_obschee_vpechatlenie_ot_suhogo_chaynogo_lista_distribution.jpg`
+- `61_sootvetstvie_sortovym_standartam_distribution.jpg`
+- `62_nasyschennost_cveta_distribution.jpg`
+- `63_terpkost_distribution.jpg`
+- `64_kislotnost_distribution.jpg`
+- `65_gorech_distribution.jpg`
+- `66_sladost_vkusa_i_poslevkusiya_distribution.jpg`
+- `67_solenost_mineralnost_vkusa_distribution.jpg`
+- `68_vkus_umami_distribution.jpg`
 
-Files:
-- `00_summary.jpg`
-- `13_tags.jpg`
-- `57_vyrazitelnost_aromata.jpg`
-- `58_plotnost_vkusa.jpg`
-- `59_yarkost_poslevkusiya.jpg`
-- `60_obschee_vpechatlenie_ot_suhogo_chaynogo_lista.jpg`
-- `61_sootvetstvie_sortovym_standartam.jpg`
-- `62_nasyschennost_cveta.jpg`
-- `63_terpkost.jpg`
-- `64_kislotnost.jpg`
-- `65_gorech.jpg`
-- `66_sladost_vkusa_i_poslevkusiya.jpg`
-- `67_solenost_mineralnost_vkusa.jpg`
-- `68_vkus_umami.jpg`
+Free-text comments:
+- Tea 1: неоднородный цвет с тёмными и зелеными отливами, ароматика теплая и приятная с нотами печенья и ванили
+- Tea 2: красавица) крупнолистное сырьё с бордовыми и светлыми участками. аромат еле ощутимый с пыльными и сахарными нотами
+- Tea 2: Заметно сходство с Руби 18
+- Tea 3: Пряный
+- Tea 4: Похож на сингуц байча
