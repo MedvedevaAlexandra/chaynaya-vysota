@@ -497,6 +497,77 @@ def draw_selected_and_freeform_tags(tags, free_texts, phrase_answers):
     save_fig(fig, "06_tags_and_freeform_by_tea.jpg")
 
 
+
+def criterion_label(name: str) -> str:
+    replacements = {
+        "Общее впечатление от сухого чайного листа": "Общее впечатление\nсухой лист",
+        "Соответствие сортовым стандартам": "Сортовые\nстандарты",
+        "сладость вкуса и послевкусия": "Сладость вкуса\nи послевкусия",
+        "солёность / минеральность вкуса": "Солёность /\nминеральность",
+        "яркость послевкусия": "Яркость\nпослевкусия",
+        "выразительность аромата": "Выразительность\nаромата",
+        "насыщенность цвета": "Насыщенность\nцвета",
+        "плотность вкуса": "Плотность\nвкуса",
+        "вкус умами": "Умами",
+    }
+    return replacements.get(name, name)
+
+
+def draw_per_tea_criteria_heatmaps(criteria, per_criterion):
+    criteria_ids = sorted(criteria)
+    score_values = sorted(
+        {
+            score
+            for cid in criteria_ids
+            for tea_order in range(5)
+            for score in per_criterion[cid].get(tea_order, [])
+        }
+        | {
+            int(item["value"])
+            for cid in criteria_ids
+            for item in (criteria[cid].get("grade") or [])
+        }
+    )
+
+    for tea_order in range(5):
+        matrix = np.zeros((len(criteria_ids), len(score_values)), dtype=int)
+        for i, cid in enumerate(criteria_ids):
+            counter = Counter(per_criterion[cid].get(tea_order, []))
+            for j, score in enumerate(score_values):
+                matrix[i, j] = counter.get(score, 0)
+
+        fig, ax = plt.subplots(figsize=(10.5, max(6.5, len(criteria_ids) * 0.48)), facecolor="white")
+        ax.imshow(matrix, cmap="Blues", aspect="auto", vmin=0)
+        ax.set_title(
+            f"Чай {tea_order + 1}: {TEA_NAMES_ONE_LINE[tea_order]} — оценки по критериям",
+            fontsize=16,
+            fontweight="bold",
+            pad=14,
+        )
+        ax.set_xlabel("Оценка", fontsize=11)
+        ax.set_ylabel("Критерий", fontsize=11)
+        ax.set_xticks(range(len(score_values)))
+        ax.set_xticklabels([str(value) for value in score_values], fontsize=10)
+        ax.set_yticks(range(len(criteria_ids)))
+        ax.set_yticklabels([criterion_label(criteria[cid]["name"]) for cid in criteria_ids], fontsize=9)
+
+        vmax = max(1, int(matrix.max()) if matrix.size else 1)
+        for i in range(matrix.shape[0]):
+            for j in range(matrix.shape[1]):
+                value = int(matrix[i, j])
+                color = "white" if value > vmax / 2 else "#222"
+                ax.text(j, i, str(value) if value else "", ha="center", va="center", fontsize=10, color=color)
+
+        ax.set_xticks(np.arange(-0.5, len(score_values), 1), minor=True)
+        ax.set_yticks(np.arange(-0.5, len(criteria_ids), 1), minor=True)
+        ax.grid(which="minor", color="white", linestyle="-", linewidth=1.1)
+        ax.tick_params(which="minor", bottom=False, left=False)
+        ax.spines[["top", "right", "bottom", "left"]].set_visible(False)
+
+        filename = f"07_tea_{tea_order + 1}_all_criteria_heatmap.jpg"
+        save_fig(fig, filename)
+
+
 def write_readme(participants, teas, criteria, tags, free_texts):
     lines = [
         "# One-graph JPEG infographics for the May 31 tasting",
@@ -536,6 +607,8 @@ def main():
     draw_activity(activity)
     draw_text_comments_count(free_texts)
     draw_selected_and_freeform_tags(tags, free_texts, phrase_answers)
+
+    draw_per_tea_criteria_heatmaps(criteria, per_criterion)
 
     for cid in sorted(criteria):
         draw_criterion_distribution(criteria[cid], per_criterion[cid])
