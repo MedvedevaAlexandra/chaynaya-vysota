@@ -233,6 +233,7 @@ def build_marks(marks):
 
 
 def save_fig(fig, filename):
+    fig.tight_layout()
     fig.savefig(OUT_DIR / filename, format="jpeg", dpi=150, bbox_inches="tight", pil_kwargs={"quality": 95})
     plt.close(fig)
 
@@ -284,46 +285,34 @@ def draw_criterion_distribution(criteria_item, tea_marks):
         score_values = list(range(min(all_values + [0]), max(all_values + [10]) + 1))
 
     matrix = np.zeros((5, len(score_values)), dtype=int)
-    avg_labels = []
     for tea in range(5):
         counter = Counter(tea_marks.get(tea, []))
         for j, score in enumerate(score_values):
             matrix[tea, j] = counter.get(score, 0)
-        values = tea_marks.get(tea, [])
-        if values:
-            avg_labels.append(f"Чай {tea + 1}: n={len(values)}, ср={np.mean(values):.1f}")
-        else:
-            avg_labels.append(f"Чай {tea + 1}: нет оценок")
 
-    fig, ax = plt.subplots(figsize=(9.5, 5.5), facecolor="white")
+    fig, ax = plt.subplots(figsize=(9.6, 5.3), facecolor="white")
     im = ax.imshow(matrix, cmap="Blues", aspect="auto", vmin=0)
-    ax.set_title(name, fontsize=15, fontweight="bold", pad=12)
-    ax.set_xlabel("Оценка")
-    ax.set_ylabel("Чай")
+    ax.set_title(name, fontsize=16, fontweight="bold", pad=14)
+    ax.set_xlabel("Оценка", fontsize=11)
+    ax.set_ylabel("Чай", fontsize=11)
     ax.set_xticks(range(len(score_values)))
     ax.set_xticklabels([str(value) for value in score_values], fontsize=10)
     ax.set_yticks(range(5))
-    ax.set_yticklabels(
-        [f"Чай {i + 1}: {TEA_NAMES_ONE_LINE[i]}\n{avg_labels[i]}" for i in range(5)],
-        fontsize=9,
-    )
+    ax.set_yticklabels([f"Чай {i + 1}: {TEA_NAMES_ONE_LINE[i]}" for i in range(5)], fontsize=10)
 
     vmax = max(1, int(matrix.max()))
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             value = int(matrix[i, j])
             color = "white" if value > vmax / 2 else "#222"
-            ax.text(j, i, str(value) if value else "", ha="center", va="center", fontsize=12, color=color)
+            ax.text(j, i, str(value) if value else "", ha="center", va="center", fontsize=13, color=color)
 
-    if grade:
-        labels = {int(item["value"]): item["label"] for item in grade}
-        for j, score in enumerate(score_values):
-            if score in labels:
-                ax.text(j, 5.02, labels[score], ha="center", va="top", fontsize=7, rotation=25, clip_on=False)
-        ax.set_ylim(4.5, -0.5)
+    ax.set_xticks(np.arange(-0.5, len(score_values), 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, 5, 1), minor=True)
+    ax.grid(which="minor", color="white", linestyle="-", linewidth=1.2)
+    ax.tick_params(which="minor", bottom=False, left=False)
+    ax.spines[["top", "right", "bottom", "left"]].set_visible(False)
 
-    cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.03)
-    cbar.set_label("Количество участников")
     filename = f"{cid:02d}_{slugify(name)}_distribution.jpg"
     save_fig(fig, filename)
 
@@ -368,20 +357,25 @@ def draw_tags_by_tea(tags):
             matrix[tea, j] = by_tea[tea][tag]
 
     fig, ax = plt.subplots(figsize=(11, 5.2), facecolor="white")
-    im = ax.imshow(matrix, cmap="Blues", aspect="auto", vmin=0)
-    ax.set_title("Тэги по чаям (топ-15 тэгов)", fontsize=15, fontweight="bold")
+    ax.imshow(matrix, cmap="Blues", aspect="auto", vmin=0)
+    ax.set_title("Тэги по чаям (топ-15)", fontsize=16, fontweight="bold", pad=14)
     ax.set_xticks(range(len(selected)))
     ax.set_xticklabels(selected, rotation=45, ha="right", fontsize=9)
     ax.set_yticks(range(5))
     ax.set_yticklabels([f"Чай {i + 1}: {TEA_NAMES_ONE_LINE[i]}" for i in range(5)], fontsize=9)
+
     vmax = max(1, int(matrix.max()) if matrix.size else 1)
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             value = int(matrix[i, j])
             color = "white" if value > vmax / 2 else "#222"
-            ax.text(j, i, str(value) if value else "", ha="center", va="center", fontsize=9, color=color)
-    cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.03)
-    cbar.set_label("Количество отметок")
+            ax.text(j, i, str(value) if value else "", ha="center", va="center", fontsize=10, color=color)
+
+    ax.set_xticks(np.arange(-0.5, len(selected), 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, 5, 1), minor=True)
+    ax.grid(which="minor", color="white", linestyle="-", linewidth=1.1)
+    ax.tick_params(which="minor", bottom=False, left=False)
+    ax.spines[["top", "right", "bottom", "left"]].set_visible(False)
     save_fig(fig, "03_tags_by_tea_heatmap.jpg")
 
 
@@ -393,12 +387,10 @@ def draw_activity(activity):
     ax.bar(x, values, color="#59A14F")
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=9)
-    ax.set_ylabel("Количество оценённых критериев")
-    ax.set_title("Активность участников: сколько критериев оценено", fontsize=15, fontweight="bold")
+    ax.set_ylabel("Количество оценённых критериев", fontsize=11)
+    ax.set_title("Активность участников", fontsize=16, fontweight="bold", pad=14)
     ax.grid(axis="y", color="#dddddd")
     ax.spines[["top", "right"]].set_visible(False)
-    for xi, value in zip(x, values):
-        ax.text(xi, value + 0.5, str(value), ha="center", fontsize=9)
     save_fig(fig, "04_activity_criteria_marks.jpg")
 
 
@@ -413,12 +405,10 @@ def draw_text_comments_count(free_texts):
     ax.bar(x, values, color="#F28E2B")
     ax.set_xticks(x)
     ax.set_xticklabels([f"Чай {i + 1}\n{TEA_NAMES[i]}" for i in range(5)], fontsize=9)
-    ax.set_ylabel("Количество текстовых комментариев")
-    ax.set_title("Свободные текстовые комментарии по чаям", fontsize=15, fontweight="bold")
+    ax.set_ylabel("Количество комментариев", fontsize=11)
+    ax.set_title("Свободные текстовые комментарии", fontsize=16, fontweight="bold", pad=14)
     ax.grid(axis="y", color="#dddddd")
     ax.spines[["top", "right"]].set_visible(False)
-    for xi, value in zip(x, values):
-        ax.text(xi, value + 0.05, str(value), ha="center", fontsize=10)
     save_fig(fig, "05_free_text_comments_by_tea.jpg")
 
 
@@ -439,28 +429,17 @@ def draw_selected_and_freeform_tags(tags, free_texts, phrase_answers):
     for tea_order, template, answers in phrase_answers:
         values = answers if isinstance(answers, list) else []
         typed_values = []
-
-        # In these phrase templates the first blank is a controlled intensity choice.
-        # It is not a keyboard-entered tag, so skip it. Keep only the following
-        # descriptor blanks unless they are controlled values too.
         for value in values[1:]:
             value = str(value).strip()
             if value and value.lower() not in controlled_values:
                 typed_values.append(value)
-
-        # A few legacy answers can place a user-entered word in the first blank
-        # for short templates. Include it only when it is not one of the controlled
-        # intensity choices.
         if values:
             first = str(values[0]).strip()
             if first and first.lower() not in controlled_values and len(values) <= 3:
                 typed_values.insert(0, first)
-
         for value in typed_values:
             counts[f"своб. тэг: {value}"][tea_order] += 1
 
-    # Free text fields are manual keyboard input. Keep them separate from tags,
-    # with short readable summaries.
     free_text_patterns = [
         ("печенье / ваниль", ["печень", "ванил"]),
         ("пыльные / сахарные ноты", ["пыль", "сахар"]),
@@ -495,14 +474,13 @@ def draw_selected_and_freeform_tags(tags, free_texts, phrase_answers):
             matrix[i, tea] = counts[row][tea]
 
     fig, ax = plt.subplots(figsize=(10.5, max(7, len(rows) * 0.34)), facecolor="white")
-    im = ax.imshow(matrix, cmap="Blues", aspect="auto", vmin=0)
-    ax.set_title("Отмеченные тэги и ручной ввод по каждому чаю", fontsize=15, fontweight="bold")
+    ax.imshow(matrix, cmap="Blues", aspect="auto", vmin=0)
+    ax.set_title("Тэги и ручной ввод по чаям", fontsize=16, fontweight="bold", pad=14)
     ax.set_xticks(range(5))
     ax.set_xticklabels([f"Чай {i + 1}\n{TEA_NAMES[i]}" for i in range(5)], fontsize=9)
     ax.set_yticks(range(len(rows)))
     ax.set_yticklabels(rows, fontsize=8)
-    ax.set_xlabel("Чай")
-    ax.set_ylabel("Стандартный тэг / ручной ввод")
+    ax.set_xlabel("Чай", fontsize=11)
 
     vmax = max(1, int(matrix.max()) if matrix.size else 1)
     for i in range(matrix.shape[0]):
@@ -511,8 +489,11 @@ def draw_selected_and_freeform_tags(tags, free_texts, phrase_answers):
             color = "white" if value > vmax / 2 else "#222"
             ax.text(j, i, str(value) if value else "", ha="center", va="center", fontsize=9, color=color)
 
-    cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.03)
-    cbar.set_label("Количество отметок")
+    ax.set_xticks(np.arange(-0.5, 5, 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, len(rows), 1), minor=True)
+    ax.grid(which="minor", color="white", linestyle="-", linewidth=1.1)
+    ax.tick_params(which="minor", bottom=False, left=False)
+    ax.spines[["top", "right", "bottom", "left"]].set_visible(False)
     save_fig(fig, "06_tags_and_freeform_by_tea.jpg")
 
 
